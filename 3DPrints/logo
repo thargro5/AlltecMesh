@@ -1,0 +1,66 @@
+#script used to create an Alltec nameplate stl for the power box 
+
+import trimesh
+from trimesh.creation import box, extrude_polygon
+#from trimesh.exchange import export_mesh
+
+import numpy as np
+from matplotlib.textpath import TextPath
+from matplotlib.font_manager import FontProperties
+from shapely.geometry import Polygon
+import shapely
+import io
+
+# Settings
+text = "ALLTEC"
+font_prop = FontProperties(family='DejaVu Sans', weight='bold')
+text_path = TextPath((-115, -3), text, size=35, prop=font_prop)
+
+# Convert to shapely polygon
+polys = text_path.to_polygons()
+shapely_polys = [Polygon(poly) for poly in polys if len(poly) > 2]
+
+# Extrude text geometry
+text_meshes = [trimesh.creation.extrude_polygon(p, height=1.0) for p in shapely_polys]
+text_mesh = trimesh.util.concatenate(text_meshes)
+
+# Translate it slightly above origin
+  # Adjust this to float above your nameplate
+#final_sign = trimesh.util.concatenate([base, text_mesh])
+# File paths
+output_path = "/3dPrint/alltec_nameplate_with_logo_fst2.stl"
+logo_path = "/3dPrint/TheLightningSign.stl"
+
+# Nameplate dimensions (in mm)
+plate_length = 220
+plate_height = 40
+plate_thickness = 4
+
+# Create the base nameplate
+nameplate = box(extents=[plate_length, plate_height, plate_thickness])
+nameplate.apply_translation([plate_length / 2, plate_height / 2, plate_thickness / 2])
+
+# Load and prepare the lightning logo
+logo = trimesh.load_mesh(logo_path)
+
+# Scale lightning logo to fit plate
+scale_factor = (plate_height * 0.8) / logo.extents[1]
+logo.apply_scale(scale_factor)
+
+# Position lightning logo on the right side of the plate
+logo.apply_translation([
+    10,
+    (plate_height - 13) / 4,
+    plate_thickness + 0.1  # Float it just above the surface
+])
+
+text_mesh.apply_translation([plate_length - logo.extents[0] / 2 - 25, plate_height / 4, plate_thickness + .01])  # Float it just above the surface
+# Place the text on the plate
+#ext_mesh.apply_translation([10, 5, 3])  # adjust for good fit
+
+combo = trimesh.util.concatenate([nameplate, logo, text_mesh])
+
+# Export final nameplate
+combo.export(output_path)
+
+print("🔥 Nameplate exported to:", output_path)
