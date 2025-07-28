@@ -1,0 +1,39 @@
+#script used to design a motorMount for nema stepper motor 
+#end result is a stl file to 3d print
+
+import trimesh
+import numpy as np
+from shapely.geometry import Polygon
+
+# Plug dimensions
+plug_radius = 35.798 / 2  # Convert diameter to radius
+plug_height = 25.4   # Height of the plug
+
+# Screw hole dimensions
+hole_radius = 6.35 / 2  # 1/4 inch diameter to mm and radius
+
+# Nut trap dimensions
+nut_flat_distance = 13.5  # Example flat-to-flat distance across the nut (M6 nut is about 10mm, you can adjust)
+nut_height = 5.59
+# Create the main plug (big ol cylinder)
+plug = trimesh.creation.cylinder(radius=plug_radius, height=plug_height)
+
+# Create the through-hole (make it longer so it fully punches through)
+through_hole = trimesh.creation.cylinder(radius=hole_radius, height=plug_height + 30)
+# Center the through-hole properly
+through_hole.apply_translation([0, 0, plug_height / 2])
+
+# Create the hexagon 2D shape manually
+theta = np.linspace(0, 2 * np.pi, 7)[:-1]  # 6 points only
+hex_points = np.column_stack((np.cos(theta), np.sin(theta))) * (nut_flat_distance / 2)
+
+# Extrude hexagon into a small prism for nut pocket
+hexagon_mesh = trimesh.creation.extrude_polygon(Polygon(hex_points), height=nut_height)
+# Now move hexagon to sit perfectly at the bottom of the plug
+hexagon_mesh.apply_translation([0, 0, -13])  # Lift half its height above z=0
+
+# Final: Subtract both holes
+final_plug = plug.difference([through_hole, hexagon_mesh])
+
+# Export that beautiful creation
+final_plug.export("/Downloads/3dPrint/pipe_plug_through__hex_.stl")
